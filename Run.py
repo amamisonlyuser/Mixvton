@@ -68,12 +68,6 @@ class LeffaPredictor(object):
         )
         self.vt_inference_hd = LeffaInference(model=vt_model_hd)
 
-        vt_model_dc = LeffaModel(
-            pretrained_model_name_or_path=sd_inpainting_path,
-            pretrained_model=os.path.join(self.ckpt_dir, "virtual_tryon_dc.pth"),
-            dtype="float16",
-        )
-        self.vt_inference_dc = LeffaInference(model=vt_model_dc)
         print("LeffaPredictor models initialized.")
 
     def _leffa_predict_internal(
@@ -89,9 +83,7 @@ class LeffaPredictor(object):
         vt_repaint=False,
         preprocess_garment_flag=False
     ):
-        # Validate garment type early
-        if vt_garment_type not in ["upper_body", "lower_body", "dresses"]:
-            raise ValueError(f"Invalid vt_garment_type: '{vt_garment_type}'. Must be 'upper_body', 'lower_body', or 'dresses'.")
+        # ... (rest of the code before this section is unchanged)
 
         src_image = resize_and_center(src_image_pil, 768, 1024)
         temp_garment_file_path = None
@@ -108,10 +100,18 @@ class LeffaPredictor(object):
         else:
             ref_image = resize_and_center(ref_image_pil, 768, 1024)
 
+        # *** ADD THIS BLOCK ***
+        # Ensure ref_image is always RGB (3 channels) before proceeding to model
+        if ref_image.mode != 'RGB':
+            ref_image = ref_image.convert('RGB')
+            print("Converted ref_image to RGB (3 channels).")
+        # ********************
+
         src_image_array = np.array(src_image)
-        src_image_rgb = src_image.convert("RGB")
+        src_image_rgb = src_image.convert("RGB") # This line is already good for src_image
         model_parse, _ = self.parsing(src_image_rgb.resize((384, 512)))
         keypoints = self.openpose(src_image_rgb.resize((384, 512)))
+
 
         if vt_model_type == "viton_hd":
             mask = get_agnostic_mask_hd(model_parse, keypoints, vt_garment_type)
